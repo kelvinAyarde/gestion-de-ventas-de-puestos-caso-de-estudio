@@ -1,0 +1,260 @@
+{% extends 'venta/venta.html' %}
+
+{% block cont_formularios %}
+<div>
+    <h1>Registro Venta</h1>
+    <div class="cont_doble">
+        <section class="parte_izquierda">
+            <form id="form_registro_venta">
+                <h3>Buscar Cliente</h3>
+                <label for="nro_ci">Número de CI:</label>
+                <input type="text" id="nro_ci" name="nro_ci" required maxlength="10" pattern="[0-9A-Za-z]{6,10}">
+                <button type="button" class="btn_buscar" onclick="buscar_cliente()">buscar</button><br><br>
+                <p>Datos busqueda cliente:<br>
+                    <span id="datos_cliente"></span>
+                </p>
+                <input type="hidden" id="id_cliente">
+                <input type="hidden" id="pago_pendiente">
+
+                <p>Local Comercial Seleccionado:<br>
+                    <span id="datos_local_comercial"></span>
+                </p>
+                <input type="hidden" id="id_sector">
+                <input type="hidden" id="id_pasillo">
+                <input type="hidden" id="precio_venta">
+
+                <select id="id_tipo_venta" required></select><br><br>
+
+                <button type="submit" class="registrar-btn"> Registrar </button>
+                <a href="registro_venta" class="close-btn" id="cerrar-btn">Cancelar</a>
+            </form>
+        </section>
+        <section class="parte_derecha">
+            <div class="cont_tabla">
+                <input type="search" id="buscar_local_comercial" class="input_busqueda" 
+                placeholder="Buscar Local Comcercial">
+                <table id="tabla_local_comercial">
+                    <thead>
+                        <tr>
+                            <th>Nro_local</th>
+                            <th>Precio</th>
+                            <th>Mts2</th>
+                            <th>Descripcion</th>
+                            <th>Estado</th>
+                            <th>Sector</th>
+                            <th>Pasillo</th>
+                            <th>Piso</th>
+                            <th>Operacion</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </section>
+    </div>
+</div>
+
+<script>
+    function seleccion_local_comercial(data){
+        datos = `
+        nro_local: ${data.nro_local} <br>
+        precio: ${data.precio} <br>
+        metros_cuadrados: ${data.metros_cuadrados} <br>
+        descripcion: ${data.descripcion} <br>
+        sector: ${data.sector} <br>
+        pasillo: ${data.pasillo} <br>
+        piso: ${data.piso} <br>
+        `;
+        $('#datos_local_comercial').html(datos)
+        $('#id_sector').val(data.id_sector)
+        $('#id_pasillo').val(data.id_pasillo);
+        $('#precio_venta').val(data.precio);
+    }
+
+    function buscar_cliente(){
+        //poner el id donde se cargara los datos
+        cargar_datos= $('#datos_cliente');
+
+        $('#id_cliente').val('');
+        $('#pago_pendiente').val('');
+        $.ajax({
+            url: url_servidor+'/venta/buscar_cliente_venta/'+ $('#nro_ci').val(),
+            type: 'GET',
+            dataType: 'json',
+            success: function (respuesta) {
+                contenido= respuesta.contenido;
+                if (respuesta.exito) {
+                    datos_busqueda= `
+                    Nombre_cliente: ${contenido.nombre}<br>
+                    Pago Pendiente: ${contenido.pago_pendiente === 'N'? 'No, Tiene Ventas Pendientes': 'Si, Tiene Ventas Pendientes' } <br>
+                    `;
+                    $('#id_cliente').val(contenido.id_cliente);
+                    $('#pago_pendiente').val(contenido.pago_pendiente);
+                    cargar_datos.html(datos_busqueda);
+                } else {
+                    cargar_datos.text(contenido);
+                }
+            }
+        });
+    }
+
+    $('#form_registro_venta').submit(function (event) {
+        event.preventDefault();
+        var formData = {
+            precio_venta: $('#precio_venta').val(),
+            id_cliente: $('#id_cliente').val(),
+            id_tipo_venta: $('#id_tipo_venta').val(),
+            id_sector: $('#id_sector').val(),
+            id_pasillo: $('#id_pasillo').val(),
+            pago_pendiente: $('#pago_pendiente').val()
+        };
+        if($('#id_tipo_venta').val() === '2'){ // si el tipo de venta es 2 entonces es credito
+            pantalla_emergente = $('#cont_pantalla_emergente');
+            var $overlay = $('#popup-overlay');
+            $overlay.show();
+            contenido=`
+            <main>
+                <h1>Registro Credito</h1>
+                <form id="form_reg_credito">
+                    <div class="cont_form_2_secciones">
+                        <section class="form_seccion">
+                            <label for="cantidad_cuotas">Cantidad de Cuotas:</label>
+                            <input type="number" id="cantidad_cuotas" name="cantidad_cuotas" required><br><br>
+                            
+                            <label for="monto">Monto:</label>
+                            <input type="number" id="monto" name="monto" value="${$('#precio_venta').val()}" required readonly><br><br>
+                            
+                            <label for="fecha_inicio">Fecha de Inicio:</label>
+                            <input type="date" id="fecha_inicio" name="fecha_inicio" required><br><br>
+                            
+                            <label for="tasa_interes_anual">Tasa de Interés Anual:</label>
+                            <input type="number" id="tasa_interes_anual" name="tasa_interes_anual" step="0.01" required><br><br>
+                        </section>
+                    </div>
+                    <section class="form_seccion_btns">
+                        <button type="submit" class="registrar-btn"> Registrar </button>
+                        <button type="button" class="close-btn" id="cerrar-btn"> Cerrar </button>
+                    </section>
+                </form>
+            </main>
+            `;
+            pantalla_emergente.html(contenido);
+            
+        }else{
+            $.ajax({
+                url: url_servidor+'/venta/registro_venta',
+                type: 'POST',
+                contentType: 'application/json',
+                dataType: 'json',
+                data: JSON.stringify(formData),
+                success: function (respuesta) {
+                    if (respuesta.exito) {
+                        crearMensaje(respuesta.titulo, respuesta.mensaje, respuesta.redireccion);
+                    } else {
+                        crearMensaje(respuesta.titulo, respuesta.mensaje);
+                    }
+                }
+            });
+        }
+    });
+
+    $(document).on('submit', '#form_reg_credito', function (event) {
+        event.preventDefault();
+        var formData = {
+            precio_venta: $('#precio_venta').val(),
+            id_cliente: $('#id_cliente').val(),
+            id_tipo_venta: $('#id_tipo_venta').val(),
+            id_sector: $('#id_sector').val(),
+            id_pasillo: $('#id_pasillo').val(),
+            pago_pendiente: $('#pago_pendiente').val(),
+
+            cantidad_cuotas: $('#cantidad_cuotas').val(),
+            monto: $('#monto').val(),
+            fecha_inicio: $('#fecha_inicio').val(),
+            tasa_interes_anual: $('#tasa_interes_anual').val()
+        };
+        $.ajax({
+            url: url_servidor+'/venta/registro_credito',
+            type: 'POST',
+            contentType: 'application/json',
+            dataType: 'json',
+            data: JSON.stringify(formData),
+            success: function (respuesta) {
+                if (respuesta.exito) {
+                    crearMensaje(respuesta.titulo, respuesta.mensaje, respuesta.redireccion);
+                } else {
+                    crearMensaje(respuesta.titulo, respuesta.mensaje);
+                }
+            }
+        });  
+    });
+
+
+    cargar_tipo_venta();
+    function cargar_tipo_venta(){
+        var select = $('#id_tipo_venta');
+        $.ajax({
+            url: url_servidor+'/venta/traer_tipo_venta',
+            type: 'GET',
+            dataType: 'json',
+            success: function (data) {
+                // Limpiar el select antes de agregar nuevas opciones
+                select.empty();
+                select.append($('<option>', {
+                    value: '',
+                    text: 'Selecciona una opción'
+                }));
+                // Agregar opciones al select
+                $.each(data, function (index, item) {
+                    select.append($('<option>', {
+                        value: item.id,
+                        text: item.nombre
+                    }));
+                });
+            }
+        });
+    }
+
+    cargar_tabla_local_comercial();
+    function cargar_tabla_local_comercial(){
+        $.ajax({
+            url: url_servidor+'/venta/traer_locales_comercial',
+            type: 'GET',
+            dataType: 'json',
+            success: function (resultado) {
+                var tabla = $('#tabla_local_comercial tbody');
+                if (resultado.length === 0) {
+                    console.log("la tabla no tiene datos");
+                }else{
+                    tabla.empty();
+                    resultado.forEach(data => {
+                        const tr = document.createElement('tr');
+                        const trContent = `
+                        <tr>
+                            <td>${data.nro_local}</td>
+                            <td>${data.precio}</td>
+                            <td>${data.metros_cuadrados}</td>
+                            <td>${data.descripcion}</td>
+                            <td class="${data.estado === 'O' ? 'Ocupado' : 'Disponible'}">${data.estado === 'O' ? 'Ocupado' : 'Disponible'}</td>
+                            <td>${data.sector}</td>  
+                            <td>${data.pasillo}</td>
+                            <td>${data.piso}</td>   
+                            <td>${data.estado === 'O' ? '' :
+                                `<button type="button" onclick="seleccion_local_comercial(${JSON.stringify(data).replace(/"/g, '&quot;')})" 
+                                class="btn_editar">seleccionar</button>`
+                            }</td>
+                        </tr>    
+                        `;
+                        tr.innerHTML = trContent;
+                        tabla.append(trContent);
+                    });
+                }
+            }
+        });
+    }
+    $('#buscar_local_comercial').on('input', function() {
+        var textoBusqueda = $(this).val().toLowerCase();
+        BuscarEnTabla('#tabla_local_comercial',textoBusqueda);
+    });
+</script>
+{% endblock %}

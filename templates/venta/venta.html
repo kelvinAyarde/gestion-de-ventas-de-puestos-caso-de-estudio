@@ -1,0 +1,31 @@
+{% extends 'inicio/base.html' %}
+
+{% block contenido %}
+<div>
+    <div class="cont_pantalla_emergente" id="cont_pantalla_emergente">
+        {% block contenido_pantalla_emergente %}
+        {% endblock %}
+    </div>
+
+    <section class="parte-top">
+        <a href="registro_venta">
+            <div class="decorado_cubrir color_decorado_cubrir_1">
+                <span class="material-icons-sharp">add</span>
+                <h3>Registro Venta</h3>
+            </div>
+        </a>
+    </section>
+
+    <section class="parte-mid">
+        <div class="cont_formularios">
+            {% block cont_formularios %}
+            {% endblock %}
+        </div>
+    </section>
+
+</div>
+
+<script>
+
+</script>
+{% endblock %}
